@@ -2,6 +2,7 @@ package com.ecommerce.customerservice.controller;
 
 import com.ecommerce.customerservice.entity.Customer;
 import com.ecommerce.customerservice.service.CustomerService;
+import com.ecommerce.customerservice.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,9 @@ public class CustomerController {
     @Autowired
     private CustomerService customerService;
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
     @PostMapping("/register")
     public ResponseEntity<Customer> register(@RequestBody Customer customer)
     {
@@ -28,10 +32,13 @@ public class CustomerController {
     public ResponseEntity<Map<String,String>> login(@RequestBody Map<String, String> request)
     {
         Customer customer = customerService.login(request.get("email"), request.get("password") );
+
+        String token = jwtUtil.generateToken(customer.getEmail(),customer.getRole());
         Map<String, String> response = new HashMap<>();
         response.put("message" , "Login successful");
-        response.put("customerId", customer.getEmail());
+        response.put("customerId", customer.getId().toString());
         response.put("role", customer.getRole());
+        response.put("token",token);
         return ResponseEntity.ok(response);
     }
 

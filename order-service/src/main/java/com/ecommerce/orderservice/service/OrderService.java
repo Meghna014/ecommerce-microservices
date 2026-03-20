@@ -58,7 +58,7 @@ public class OrderService {
         }
 
         //delete the cart
-         restTemplate.delete("http://cart-service/"+customerId+"/clear");
+         restTemplate.delete("http://cart-service/cart/"+customerId+"/clear");
 
         //send order place event
         List<Long> productIds = order.getItems().stream()
