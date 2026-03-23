@@ -1,0 +1,2 @@
+-- Tables will be created automatically by Spring Boot JPA
+-- Sample data will be added via Postman after services start

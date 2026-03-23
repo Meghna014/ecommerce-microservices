@@ -5,6 +5,7 @@ import com.ecommerce.productservice.entity.Product;
 import com.ecommerce.productservice.exception.ProductNotFoundException;
 import com.ecommerce.productservice.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import java.util.List;
@@ -77,20 +78,35 @@ public class ProductService {
         response.setMaterial(product.getMaterial());
         response.setStock(product.getStock());
 
-        // Call Price Service only
+        //Call price service with Circuit Breaker
         try {
-            Map price = restTemplate.getForObject(
-                    "http://price-service/price/" + product.getId(), Map.class);
-            if (price != null) {
-                response.setPrice(price.get("price") != null ?
-                        Double.valueOf(price.get("price").toString()) : null);
-                response.setDiscount(price.get("discount") != null ?
-                        Double.valueOf(price.get("discount").toString()) : null);
+            Map<String, Object> priceData = getPriceWithCircuitBreaker(product.getId());
+            if (priceData != null) {
+                response.setPrice(priceData.get("price") != null ?
+                        Double.valueOf(priceData.get("price").toString()) : null);
+                response.setDiscount(priceData.get("discount") != null ?
+                        Double.valueOf(priceData.get("discount").toString()) : null);
             }
-        } catch (Exception e) {
-            System.out.println("Price service unavailable: " + e.getMessage());
+        }catch (Exception e)
+        {
+            System.out.println("Price unavailable for product: " + product.getId());
+            response.setPrice(null);
+            response.setDiscount(null);
         }
-
         return response;
+    }
+
+
+    @CircuitBreaker(name = "priceService", fallbackMethod = "getPriceFallback")
+    public Map<String, Object> getPriceWithCircuitBreaker(Long productId) {
+        Map<String, Object> price = restTemplate.getForObject(
+                "http://price-service/price/" + productId, Map.class);
+        return price;
+    }
+
+    // Fallback method
+    public Map<String, Object> getPriceFallback(Long productId, Throwable ex) {
+        System.out.println("Fallback triggered! Reason: " + ex.getMessage());
+        return null;
     }
 }
