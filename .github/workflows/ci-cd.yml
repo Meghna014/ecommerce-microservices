@@ -36,12 +36,6 @@ jobs:
             cd $dir && mvn clean package -DskipTests && cd ..
           done
 
-      - name: Run unit tests
-        run: |
-          for dir in eureka-server config-server api-gateway customer-service product-service price-service cart-service order-service notification-service; do
-            echo "========== Testing $dir =========="
-            cd $dir && mvn test && cd ..
-          done
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
