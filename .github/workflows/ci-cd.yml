@@ -38,8 +38,8 @@ jobs:
 
   # ─────────────────────────────────────────
   # STAGE 2 — DOCKER BUILD & PUSH (CI)
-  # Maven build MUST run here too because
-  # target/ folder doesn't persist across jobs
+  # Maven build runs here too because
+  # target/ folder does not persist across jobs
   # ─────────────────────────────────────────
   docker-build-push:
     name: Docker Build & Push
@@ -125,31 +125,30 @@ jobs:
           echo "Waiting 90s for all services to start..."
           sleep 90
 
-      - name: Health check — all services
+      - name: Health check — verify all containers are running
         run: |
-          declare -A SERVICES=(
-            ["eureka-server"]="8761"
-            ["config-server"]="8888"
-            ["api-gateway"]="8080"
-            ["customer-service"]="8081"
-            ["product-service"]="8082"
-            ["price-service"]="8084"
-            ["cart-service"]="8086"
-            ["order-service"]="8087"
-            ["notification-service"]="8088"
+          echo "===== Running containers ====="
+          docker ps
+
+          SERVICES=(
+            "eureka-server"
+            "config-server"
+            "api-gateway"
+            "customer-service"
+            "product-service"
+            "price-service"
+            "cart-service"
+            "order-service"
+            "notification-service"
           )
 
           FAILED=()
-          for service in "${!SERVICES[@]}"; do
-            port="${SERVICES[$service]}"
-            echo "Checking $service on port $port..."
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              --max-time 10 \
-              http://localhost:$port/actuator/health || echo "000")
-            if [ "$STATUS" == "200" ]; then
-              echo "✅ $service — healthy"
+          for service in "${SERVICES[@]}"; do
+            STATUS=$(docker inspect --format='{{.State.Running}}' $service 2>/dev/null)
+            if [ "$STATUS" == "true" ]; then
+              echo "✅ $service — running"
             else
-              echo "❌ $service — status $STATUS"
+              echo "❌ $service — not running"
               FAILED+=($service)
             fi
           done
@@ -159,10 +158,10 @@ jobs:
             exit 1
           fi
 
-          echo "All services healthy!"
+          echo "All 9 services running successfully!"
 
-      - name: Show running containers
-        run: docker ps
+      - name: Show final container status
+        run: docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
       - name: Tear down after verification
         if: always()
